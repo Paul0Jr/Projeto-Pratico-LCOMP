@@ -91,13 +91,13 @@ def validate_lean_proof(proof: str) -> bool:
 def interactive_conversation() -> None:
     history = []
 
-    print("\nConversational Mode - Type 'exit' to quit")
+    print("\nModo Conversacional - Digite 'sair' para encerrar")
     print("=" * 60)
 
     while True:
-        user_input = input("\nYou: ").strip()
+        user_input = input("\nVocê: ").strip()
 
-        if user_input.lower() == "exit":
+        if user_input.lower() == "sair":
             break
 
         history.append({"role": "user", "content": user_input})
@@ -115,7 +115,7 @@ def interactive_conversation() -> None:
         print(f"\nClaude: {assistant_response}")
 
 if __name__ == "__main__":
-    print("Test - Generating proof for Modus Ponens...")
+    print("Teste - Gerando prova para Modus Ponens...")
     print("=" * 60)
 
     proof = generate_lean_proof(
@@ -124,7 +124,7 @@ if __name__ == "__main__":
         conclusion="q"
     )
 
-    print("\nGenerated proof:")
+    print("\nProva gerada:")
     print(proof)
-    print("\nValid?" if validate_lean_proof(proof) else "\nInvalid?")
+    print("\nVálida?" if validate_lean_proof(proof) else "\nInválida?")
 
