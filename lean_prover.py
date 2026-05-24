@@ -44,7 +44,7 @@ Conclusion: {conclusion}
 
 Generate the corresponding LEAN code using natural deduction."""
 
-    model = genai.GenerativeModel("gemini-pro", system_instruction=SYSTEM_PROMPT)
+    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
     response = model.generate_content(prompt)
 
     return response.text
@@ -67,7 +67,7 @@ q = false
 
 Explain why this is a valid counterexample."""
 
-    model = genai.GenerativeModel("gemini-pro", system_instruction=SYSTEM_PROMPT)
+    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
     response = model.generate_content(prompt)
 
     return response.text
@@ -81,7 +81,7 @@ def validate_lean_proof(proof: str) -> bool:
     return all(checks)
 
 def interactive_conversation() -> None:
-    model = genai.GenerativeModel("gemini-pro", system_instruction=SYSTEM_PROMPT)
+    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
     chat = model.start_chat()
 
     print("\nModo Conversacional - Digite 'sair' para encerrar")
