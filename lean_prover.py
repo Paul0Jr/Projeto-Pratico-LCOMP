@@ -1,7 +1,7 @@
 import os
-from anthropic import Anthropic
+import google.generativeai as genai
 
-client = Anthropic()
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 SYSTEM_PROMPT = """You are an expert in propositional logic and LEAN theorem prover.
 
@@ -44,14 +44,10 @@ Conclusion: {conclusion}
 
 Generate the corresponding LEAN code using natural deduction."""
 
-    response = client.messages.create(
-        model="claude-opus-4-7",
-        max_tokens=1024,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    model = genai.GenerativeModel("gemini-pro", system_instruction=SYSTEM_PROMPT)
+    response = model.generate_content(prompt)
 
-    return response.content[0].text
+    return response.text
 
 def generate_counterexample(propositions: list[str], premises: list[str], conclusion: str) -> str:
     prompt = f"""Generate a counterexample for the following INVALID argument:
@@ -71,14 +67,10 @@ q = false
 
 Explain why this is a valid counterexample."""
 
-    response = client.messages.create(
-        model="claude-opus-4-7",
-        max_tokens=512,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    model = genai.GenerativeModel("gemini-pro", system_instruction=SYSTEM_PROMPT)
+    response = model.generate_content(prompt)
 
-    return response.content[0].text
+    return response.text
 
 def validate_lean_proof(proof: str) -> bool:
     checks = [
@@ -89,7 +81,8 @@ def validate_lean_proof(proof: str) -> bool:
     return all(checks)
 
 def interactive_conversation() -> None:
-    history = []
+    model = genai.GenerativeModel("gemini-pro", system_instruction=SYSTEM_PROMPT)
+    chat = model.start_chat()
 
     print("\nModo Conversacional - Digite 'sair' para encerrar")
     print("=" * 60)
@@ -100,19 +93,8 @@ def interactive_conversation() -> None:
         if user_input.lower() == "sair":
             break
 
-        history.append({"role": "user", "content": user_input})
-
-        response = client.messages.create(
-            model="claude-opus-4-7",
-            max_tokens=1024,
-            system=SYSTEM_PROMPT,
-            messages=history
-        )
-
-        assistant_response = response.content[0].text
-        history.append({"role": "assistant", "content": assistant_response})
-
-        print(f"\nClaude: {assistant_response}")
+        response = chat.send_message(user_input)
+        print(f"\nGemini: {response.text}")
 
 if __name__ == "__main__":
     print("Teste - Gerando prova para Modus Ponens...")

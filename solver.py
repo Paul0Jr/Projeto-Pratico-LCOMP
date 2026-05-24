@@ -166,13 +166,13 @@ def example_complex_reasoning() -> bool:
 
 def main() -> None:
     print("\n" + "=" * 60)
-    print("Verificador de Consequência Lógica com Z3 e Claude")
+    print("Verificador de Consequência Lógica com Z3 e Gemini")
     print("=" * 60)
 
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        print("\nAviso: ANTHROPIC_API_KEY não está configurada")
+    if not os.getenv("GEMINI_API_KEY"):
+        print("\nAviso: GEMINI_API_KEY não está configurada")
         print("Para usar a geração de provas em LEAN, defina:")
-        print("export ANTHROPIC_API_KEY='sua-chave-aqui'")
+        print("export GEMINI_API_KEY='sua-chave-aqui'")
         print("\nContinuando apenas com Z3...\n")
 
     results = []
