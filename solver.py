@@ -58,7 +58,7 @@ def example_modus_ponens() -> bool:
     print(f"\n[Z3] {result}")
 
     if is_consequence:
-        print("\nGerando prova em LEAN...")
+        print("\nGerando prova em LEAN:")
         try:
             proof = generate_lean_proof(
                 propositions=["p", "q"],
@@ -93,7 +93,7 @@ def example_disjunctive_syllogism() -> bool:
     print(f"\n[Z3] {result}")
 
     if is_consequence:
-        print("\nGerando prova em LEAN...")
+        print("\nGerando prova em LEAN:")
         try:
             proof = generate_lean_proof(
                 propositions=["p", "q"],
@@ -191,7 +191,7 @@ def example_complex_reasoning() -> bool:
     print(f"\n[Z3] {result}")
 
     if is_consequence:
-        print("\nGerando prova em LEAN...")
+        print("\nGerando prova em LEAN:")
         try:
             proof = generate_lean_proof(
                 propositions=["p", "q", "r"],
