@@ -1,9 +1,24 @@
 from z3 import *
 import os
-from lean_prover import generate_lean_proof, generate_counterexample
+from lean_prover import (
+    generate_lean_proof,
+    generate_counterexample,
+    generate_counterexample_with_guidance,
+    generate_counterexample_without_guidance,
+    compare_counterexamples,
+    validate_counterexample
+)
 
 def create_proposition(name: str) -> BoolRef:
     return Bool(name)
+
+def format_formula(formula: str) -> str:
+    """Convert text notation to propositional logic symbols"""
+    formula = formula.replace(" E ", " ∧ ")
+    formula = formula.replace(" OU ", " ∨ ")
+    formula = formula.replace("NÃO ", "¬")
+    formula = formula.replace("→", "→")
+    return formula
 
 def verify_logical_consequence(premises: list[BoolRef], conclusion: BoolRef) -> tuple[bool, str]:
     solver = Solver()
@@ -16,12 +31,12 @@ def verify_logical_consequence(premises: list[BoolRef], conclusion: BoolRef) -> 
     result = solver.check()
 
     if result == unsat:
-        return True, "Logical consequence verified"
+        return True, "Consequência lógica verificada"
     elif result == sat:
         model = solver.model()
-        return False, f"Not a logical consequence\nCounterexample: {model}"
+        return False, f"Não é consequência lógica\nContra-exemplo: {model}"
     else:
-        return None, "Undetermined result"
+        return None, "Resultado indeterminado"
 
 def example_modus_ponens() -> bool:
     print("=" * 60)
@@ -34,7 +49,9 @@ def example_modus_ponens() -> bool:
     premises = [p, Implies(p, q)]
     conclusion = q
 
-    print(f"Premissas: p E (p → q)")
+    print(f"Premissas:")
+    print(f"  1. p")
+    print(f"  2. p → q")
     print(f"Conclusão: q")
 
     is_consequence, result = verify_logical_consequence(premises, conclusion)
@@ -67,7 +84,9 @@ def example_disjunctive_syllogism() -> bool:
     premises = [Or(p, q), Not(p)]
     conclusion = q
 
-    print(f"Premissas: (p OU q) E NÃO p")
+    print(f"Premissas:")
+    print(f"  1. p ∨ q")
+    print(f"  2. ¬p")
     print(f"Conclusão: q")
 
     is_consequence, result = verify_logical_consequence(premises, conclusion)
@@ -78,7 +97,7 @@ def example_disjunctive_syllogism() -> bool:
         try:
             proof = generate_lean_proof(
                 propositions=["p", "q"],
-                premises=["p OU q", "NÃO p"],
+                premises=["p ∨ q", "¬p"],
                 conclusion="q"
             )
             print("\nProva em LEAN:")
@@ -100,7 +119,9 @@ def example_affirming_consequent() -> bool:
     premises = [Implies(p, q), q]
     conclusion = p
 
-    print(f"Premissas: (p → q) E q")
+    print(f"Premissas:")
+    print(f"  1. p → q")
+    print(f"  2. q")
     print(f"Conclusão: p")
     print("\nNota: Esta é uma FALÁCIA. Não é consequência lógica.\n")
 
@@ -108,17 +129,38 @@ def example_affirming_consequent() -> bool:
     print(f"[Z3] {result}")
 
     if not is_consequence:
-        print("\nGerando contra-exemplo...")
+        print("\n" + "=" * 60)
+        print("COMPARAÇÃO: Contra-exemplos COM vs SEM Guidance")
+        print("=" * 60)
+
         try:
-            counterexample = generate_counterexample(
+            comparison = compare_counterexamples(
                 propositions=["p", "q"],
                 premises=["p → q", "q"],
                 conclusion="p"
             )
-            print("\nContra-exemplo:")
-            print(counterexample)
+
+            print("\n--- SEM GUIDANCE ---")
+            if 'error' in comparison['without_guidance']:
+                print(f"Erro: {comparison['without_guidance']['error']}")
+            else:
+                print(comparison['without_guidance']['counterexample'])
+                print(f"\nVálido: {comparison['without_guidance']['valid']}")
+
+            print("\n--- COM GUIDANCE ---")
+            if 'error' in comparison['with_guidance']:
+                print(f"Erro: {comparison['with_guidance']['error']}")
+            else:
+                print(comparison['with_guidance']['counterexample'])
+                print(f"\nVálido: {comparison['with_guidance']['valid']}")
+
+            print("\n" + "-" * 60)
+            accuracy_without = comparison['without_guidance']['valid']
+            accuracy_with = comparison['with_guidance']['valid']
+            print(f"RESULTADO: Guidance {'melhorou' if accuracy_with else 'não melhorou'} a geração de contra-exemplos")
+
         except Exception as e:
-            print(f"Erro ao gerar contra-exemplo: {e}")
+            print(f"Erro ao comparar contra-exemplos: {e}")
 
     print()
     return is_consequence
@@ -141,7 +183,7 @@ def example_complex_reasoning() -> bool:
 
     print(f"Premissas:")
     print(f"  1. p → q")
-    print(f"  2. r → NÃO p")
+    print(f"  2. r → ¬p")
     print(f"  3. p")
     print(f"\nConclusão: q")
 
@@ -153,7 +195,7 @@ def example_complex_reasoning() -> bool:
         try:
             proof = generate_lean_proof(
                 propositions=["p", "q", "r"],
-                premises=["p → q", "r → NÃO p", "p"],
+                premises=["p → q", "r → ¬p", "p"],
                 conclusion="q"
             )
             print("\nProva em LEAN:")
@@ -182,10 +224,10 @@ def main() -> None:
     results.append(("Raciocínio Complexo", example_complex_reasoning()))
 
     print("=" * 60)
-    print("Resumo")
+    print("RESUMO FINAL")
     print("=" * 60)
     for name, result in results:
-        status = "Consequência lógica" if result else "Não é consequência lógica"
+        status = "✓ Consequência lógica" if result else "✗ Não é consequência lógica"
         print(f"{name}: {status}")
     print()
 
