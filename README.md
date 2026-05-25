@@ -79,7 +79,7 @@ Para cada contra-exemplo gerado pela LLM:
 
 ---
 
-## Exemplos Inclusos
+## 📊 Exemplos Inclusos
 
 1. **Modus Ponens** (válido)
    - Premissas: p, p → q
