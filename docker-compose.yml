@@ -1,12 +1,13 @@
-version: '3.8'
-
 services:
   solver:
-    build: .
+    build:
+      context: .
+      args:
+        GEMINI_API_KEY: ${GEMINI_API_KEY}
     container_name: lcomp-solver
     volumes:
       - .:/app
     environment:
       - PYTHONUNBUFFERED=1
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-    command: python solver.py
+    command: python main.py
