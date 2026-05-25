@@ -16,4 +16,4 @@ COPY . .
 ARG GEMINI_API_KEY
 ENV GEMINI_API_KEY=${GEMINI_API_KEY}
 
-CMD ["python", "main.py"]
+CMD ["python", "solver.py"]
