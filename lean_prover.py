@@ -30,32 +30,6 @@ r = true
 
 Be concise and direct. Always explain the logic used."""
 
-COUNTEREXAMPLE_PROMPT_WITH_GUIDANCE = """You are an expert in propositional logic.
-
-To validate a counterexample:
-1. Check that ALL premises are TRUE under the assignment
-2. Check that the CONCLUSION is FALSE under the assignment
-3. If both conditions are met, the counterexample is VALID
-
-Present in this exact format:
-Counterexample:
-p = [true/false]
-q = [true/false]
-...
-
-Verification:
-- Premise 1: [formula] = [true/false]
-- Premise 2: [formula] = [true/false]
-- Conclusion: [formula] = [true/false]
-
-Status: VALID/INVALID counterexample"""
-
-COUNTEREXAMPLE_PROMPT_WITHOUT_GUIDANCE = """Generate a counterexample for the following argument:
-
-p = [true/false]
-q = [true/false]
-..."""
-
 def generate_lean_proof(propositions: list[str], premises: list[str], conclusion: str) -> str:
     propositions_str = " ".join(f"({prop} : Prop)" for prop in propositions)
 
@@ -70,7 +44,7 @@ Conclusion: {conclusion}
 
 Generate the corresponding LEAN code using natural deduction."""
 
-    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
+    model = genai.GenerativeModel("gemini-1.5-mini", system_instruction=SYSTEM_PROMPT)
     response = model.generate_content(prompt)
 
     return response.text
@@ -98,133 +72,13 @@ Explain why this is a valid counterexample."""
 
     return response.text
 
-def generate_counterexample_with_guidance(propositions: list[str], premises: list[str], conclusion: str) -> str:
-    propositions_str = ", ".join(propositions)
-
-    prompt = f"""Generate a counterexample for the following INVALID argument:
-
-Propositions: {propositions_str}
-
-Premises:
-{chr(10).join(f'  {i+1}. {p}' for i, p in enumerate(premises))}
-
-Conclusion: {conclusion}
-
-IMPORTANT VERIFICATION RULES:
-1. Find a truth assignment where ALL premises evaluate to TRUE
-2. The CONCLUSION must evaluate to FALSE with this assignment
-3. Verify each premise and the conclusion
-4. If the assignment violates these rules, it is NOT a valid counterexample
-
-Present in this exact format:
-Counterexample:
-[assignments]
-
-Verification:
-[Show each premise and conclusion evaluation]
-
-Status: VALID or INVALID"""
-
-    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
-    response = model.generate_content(prompt)
-    return response.text
-
-def generate_counterexample_without_guidance(propositions: list[str], premises: list[str], conclusion: str) -> str:
-    propositions_str = ", ".join(propositions)
-
-    prompt = f"""Propositions: {propositions_str}
-
-Premises:
-{chr(10).join(f'  {i+1}. {p}' for i, p in enumerate(premises))}
-
-Conclusion: {conclusion}
-
-Counterexample:"""
-
-    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
-    response = model.generate_content(prompt)
-    return response.text
-
 def validate_lean_proof(proof: str) -> bool:
     checks = [
         "theorem" in proof or "lemma" in proof,
         ":=" in proof or ":= by" in proof,
     ]
+
     return all(checks)
-
-def validate_counterexample(counterexample: str) -> bool:
-    """Check if counterexample response contains proper structure"""
-    checks = [
-        "=" in counterexample,  # Has assignments
-        any(keyword in counterexample.lower() for keyword in ["true", "false"]),  # Has truth values
-    ]
-    return all(checks)
-
-def compare_counterexamples(propositions: list[str], premises: list[str], conclusion: str) -> dict:
-    """Compare counterexample generation with and without guidance."""
-    result = {}
-
-    try:
-        without_guidance = generate_counterexample_without_guidance(propositions, premises, conclusion)
-        result['without_guidance'] = {
-            'counterexample': without_guidance,
-            'valid': validate_counterexample(without_guidance)
-        }
-    except Exception as e:
-        result['without_guidance'] = {'error': str(e), 'valid': False}
-
-    try:
-        with_guidance = generate_counterexample_with_guidance(propositions, premises, conclusion)
-        result['with_guidance'] = {
-            'counterexample': with_guidance,
-            'valid': validate_counterexample(with_guidance)
-        }
-    except Exception as e:
-        result['with_guidance'] = {'error': str(e), 'valid': False}
-
-    return result
-
-def generate_lean_proof_without_guidance(propositions: list[str], premises: list[str], conclusion: str) -> str:
-    propositions_str = " ".join(f"({prop} : Prop)" for prop in propositions)
-
-    prompt = f"""Generate a LEAN proof for the following valid argument WITHOUT explanation:
-
-Propositions: {propositions_str}
-
-Premises:
-{chr(10).join(f'  {i+1}. {p}' for i, p in enumerate(premises))}
-
-Conclusion: {conclusion}
-
-Just provide the LEAN code, nothing else."""
-
-    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
-    response = model.generate_content(prompt)
-    return response.text
-
-def compare_with_and_without_guidance(propositions: list[str], premises: list[str], conclusion: str) -> dict:
-    """Compare proof generation with and without guidance."""
-    result = {}
-
-    try:
-        without_guidance = generate_lean_proof_without_guidance(propositions, premises, conclusion)
-        result['without_guidance'] = {
-            'proof': without_guidance,
-            'valid': validate_lean_proof(without_guidance)
-        }
-    except Exception as e:
-        result['without_guidance'] = {'error': str(e), 'valid': False}
-
-    try:
-        with_guidance = generate_lean_proof(propositions, premises, conclusion)
-        result['with_guidance'] = {
-            'proof': with_guidance,
-            'valid': validate_lean_proof(with_guidance)
-        }
-    except Exception as e:
-        result['with_guidance'] = {'error': str(e), 'valid': False}
-
-    return result
 
 def interactive_conversation() -> None:
     model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
