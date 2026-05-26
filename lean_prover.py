@@ -1,99 +1,75 @@
 import os
+from dotenv import load_dotenv
 import google.generativeai as genai
 
+load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-SYSTEM_PROMPT = """You are an expert in propositional logic and LEAN theorem prover.
+SYSTEM_PROMPT = """Você é um especialista em lógica proposicional e prover de teoremas LEAN.
 
-Your objectives are:
-1. Generate formal proofs in LEAN 3 for valid arguments
-2. Generate valid counterexamples for invalid arguments
+Seus objetivos são:
+1. Gerar provas formais em LEAN 3 para argumentos válidos
+2. Gerar contraexemplos válidos para argumentos inválidos
 
-LEAN 3 FORMAT (based on https://leanprover.github.io/logic_and_proof_lean3/natural_deduction_for_propositional_logic.html):
+FORMATO LEAN 3 (baseado em https://leanprover.github.io/logic_and_proof_lean3/natural_deduction_for_propositional_logic.html):
 
-For VALID proofs, use:
+Para provas VÁLIDAS, use:
 ```lean
-theorem proof (p q r : Prop) : conclusion := by
+theorem prova (p q r : Prop) : conclusão := by
   intro
-  -- Use tactics: exact, apply, have, cases, contradiction, etc.
+  -- Use táticas: exact, apply, have, cases, contradiction, etc.
   sorry
 ```
 
-For COUNTEREXAMPLES, describe a truth assignment that falsifies the argument:
+Para CONTRAEXEMPLOS, descreva uma atribuição de verdade que falsifica o argumento:
 ```
-Counterexample:
-p = true
-q = false
-r = true
+Contraexemplo:
+p = verdadeiro
+q = falso
+r = verdadeiro
 ...
 ```
 
-Be concise and direct. Always explain the logic used."""
+Seja conciso e direto. Sempre explique a lógica utilizada."""
 
-COUNTEREXAMPLE_PROMPT_WITH_GUIDANCE = """You are an expert in propositional logic.
-
-To validate a counterexample:
-1. Check that ALL premises are TRUE under the assignment
-2. Check that the CONCLUSION is FALSE under the assignment
-3. If both conditions are met, the counterexample is VALID
-
-Present in this exact format:
-Counterexample:
-p = [true/false]
-q = [true/false]
-...
-
-Verification:
-- Premise 1: [formula] = [true/false]
-- Premise 2: [formula] = [true/false]
-- Conclusion: [formula] = [true/false]
-
-Status: VALID/INVALID counterexample"""
-
-COUNTEREXAMPLE_PROMPT_WITHOUT_GUIDANCE = """Generate a counterexample for the following argument:
-
-p = [true/false]
-q = [true/false]
-..."""
+model = genai.GenerativeModel("gemini-3.1-flash-lite", system_instruction=SYSTEM_PROMPT)
 
 def generate_lean_proof(propositions: list[str], premises: list[str], conclusion: str) -> str:
     propositions_str = " ".join(f"({prop} : Prop)" for prop in propositions)
 
-    prompt = f"""Generate a LEAN proof for the following valid argument:
+    prompt = f"""Gere uma prova em LEAN para o seguinte argumento válido:
 
-Propositions: {propositions_str}
+Proposições: {propositions_str}
 
-Premises:
+Premissas:
 {chr(10).join(f'  {i+1}. {p}' for i, p in enumerate(premises))}
 
-Conclusion: {conclusion}
+Conclusão: {conclusion}
 
-Generate the corresponding LEAN code using natural deduction."""
+Gere o código LEAN correspondente usando dedução natural."""
 
-    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
     response = model.generate_content(prompt)
 
     return response.text
 
 def generate_counterexample(propositions: list[str], premises: list[str], conclusion: str) -> str:
-    prompt = f"""Generate a counterexample for the following INVALID argument:
+    prompt = f"""Gere um contraexemplo para o seguinte argumento INVÁLIDO:
 
-Propositions: {", ".join(propositions)}
+Proposições: {", ".join(propositions)}
 
-Premises:
+Premissas:
 {chr(10).join(f'  {i+1}. {p}' for i, p in enumerate(premises))}
 
-Conclusion: {conclusion}
+Conclusão: {conclusion}
 
-Show a truth assignment that makes ALL premises true but the conclusion FALSE.
-Format:
-p = true
-q = false
+Mostre uma atribuição de verdade que torna TODAS as premissas verdadeiras mas a conclusão FALSA.
+Formato:
+p = verdadeiro
+q = falso
 ...
 
-Explain why this is a valid counterexample."""
+Explique por que este é um contraexemplo válido."""
 
-    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
     response = model.generate_content(prompt)
 
     return response.text
@@ -101,47 +77,45 @@ Explain why this is a valid counterexample."""
 def generate_counterexample_with_guidance(propositions: list[str], premises: list[str], conclusion: str) -> str:
     propositions_str = ", ".join(propositions)
 
-    prompt = f"""Generate a counterexample for the following INVALID argument:
+    prompt = f"""Gere um contraexemplo para o seguinte argumento INVÁLIDO:
 
-Propositions: {propositions_str}
+Proposições: {propositions_str}
 
-Premises:
+Premissas:
 {chr(10).join(f'  {i+1}. {p}' for i, p in enumerate(premises))}
 
-Conclusion: {conclusion}
+Conclusão: {conclusion}
 
-IMPORTANT VERIFICATION RULES:
-1. Find a truth assignment where ALL premises evaluate to TRUE
-2. The CONCLUSION must evaluate to FALSE with this assignment
-3. Verify each premise and the conclusion
-4. If the assignment violates these rules, it is NOT a valid counterexample
+REGRAS DE VERIFICAÇÃO IMPORTANTES:
+1. Encontre uma atribuição de verdade onde TODAS as premissas avaliam como VERDADEIRAS
+2. A CONCLUSÃO deve avaliar como FALSA com esta atribuição
+3. Verifique cada premissa e a conclusão
+4. Se a atribuição viola estas regras, NÃO é um contraexemplo válido
 
-Present in this exact format:
-Counterexample:
-[assignments]
+Apresente neste formato exato:
+Contraexemplo:
+[atribuições]
 
-Verification:
-[Show each premise and conclusion evaluation]
+Verificação:
+[Mostre cada avaliação de premissa e conclusão]
 
-Status: VALID or INVALID"""
+Status: VÁLIDO ou INVÁLIDO"""
 
-    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
     response = model.generate_content(prompt)
     return response.text
 
 def generate_counterexample_without_guidance(propositions: list[str], premises: list[str], conclusion: str) -> str:
     propositions_str = ", ".join(propositions)
 
-    prompt = f"""Propositions: {propositions_str}
+    prompt = f"""Proposições: {propositions_str}
 
-Premises:
+Premissas:
 {chr(10).join(f'  {i+1}. {p}' for i, p in enumerate(premises))}
 
-Conclusion: {conclusion}
+Conclusão: {conclusion}
 
-Counterexample:"""
+Contraexemplo:"""
 
-    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
     response = model.generate_content(prompt)
     return response.text
 
@@ -185,18 +159,17 @@ def compare_counterexamples(propositions: list[str], premises: list[str], conclu
 def generate_lean_proof_without_guidance(propositions: list[str], premises: list[str], conclusion: str) -> str:
     propositions_str = " ".join(f"({prop} : Prop)" for prop in propositions)
 
-    prompt = f"""Generate a LEAN proof for the following valid argument WITHOUT explanation:
+    prompt = f"""Gere uma prova em LEAN para o seguinte argumento válido SEM explicação:
 
-Propositions: {propositions_str}
+Proposições: {propositions_str}
 
-Premises:
+Premissas:
 {chr(10).join(f'  {i+1}. {p}' for i, p in enumerate(premises))}
 
-Conclusion: {conclusion}
+Conclusão: {conclusion}
 
-Just provide the LEAN code, nothing else."""
+Apenas forneça o código LEAN, nada mais."""
 
-    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
     response = model.generate_content(prompt)
     return response.text
 
@@ -224,7 +197,6 @@ def compare_with_and_without_guidance(propositions: list[str], premises: list[st
     return result
 
 def interactive_conversation() -> None:
-    model = genai.GenerativeModel("gemini-2.0-flash", system_instruction=SYSTEM_PROMPT)
     chat = model.start_chat()
 
     print("\nModo Conversacional - Digite 'sair' para encerrar")
@@ -240,7 +212,7 @@ def interactive_conversation() -> None:
         print(f"\nGemini: {response.text}")
 
 if __name__ == "__main__":
-    print("Teste - Gerando prova para Modus Ponens...")
+    print("Teste - Gerando prova para Modus Ponens:")
     print("=" * 60)
 
     proof = generate_lean_proof(
