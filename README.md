@@ -1,6 +1,3 @@
-# Projeto-Pratico-LCOMP
-Repositório voltado para entrega do projeto prático proposto na disciplina de Lógica para Computação.
-
 # Proposta
 
 Avaliar raciocínio de LLM com e sem demonstrações em LEAN. **Gerar premissas e conclusão diretamente com formulas em logica proposicional** (→, ∧, ∨, ¬, ↔).
