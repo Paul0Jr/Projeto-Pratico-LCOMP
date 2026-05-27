@@ -104,7 +104,6 @@ def run_example(premise_data: dict, example_num: int) -> bool:
     proposition_names = premise_data['propositions']
     premise_strs = premise_data['premises']
     conclusion_str = premise_data['conclusion']
-    premise_type = premise_data['type']
 
     props = {name: create_proposition(name) for name in proposition_names}
 
@@ -118,13 +117,12 @@ def run_example(premise_data: dict, example_num: int) -> bool:
     print(f"Premissas:")
     for i, p in enumerate(premise_strs, 1):
         print(f"  {i}. {p}")
-    print(f"Conclusão: {conclusion_str}")
-    print(f"Tipo Esperado: {premise_type}\n")
+    print(f"Conclusão: {conclusion_str}\n")
 
     is_consequence, result = verify_logical_consequence(premises, conclusion)
     print(f"[Z3] {result}")
 
-    if is_consequence and premise_type == "VALID":
+    if is_consequence:
         print("\nGerando prova em LEAN:")
         try:
             proof = generate_lean_proof(
@@ -137,7 +135,7 @@ def run_example(premise_data: dict, example_num: int) -> bool:
         except Exception as e:
             print(f"Erro ao gerar prova: {e}")
 
-    elif not is_consequence and premise_type == "INVALID":
+    else:
         print("\n" + "=" * 60)
         print("COMPARAÇÃO: Contra-exemplos COM vs SEM Guidance")
         print("=" * 60)
@@ -189,7 +187,7 @@ def fourth_example(premise_data: dict) -> bool:
 
 def main() -> None:
     print("\n" + "=" * 60)
-    print("Verificador de Consequência Lógica com Z3 e Gemini")
+    print("VERIFICADOR DE CONSEQUÊNCIA LÓGICA")
     print("=" * 60)
 
     if not os.getenv("GEMINI_API_KEY"):
@@ -200,7 +198,7 @@ def main() -> None:
 
     if not premises or not validate_premises_structure(premises):
         print("\nErro: Não foi possível carregar as premissas geradas.")
-        print("Execute primeiro: python premises_generator.py")
+        print("Execute primeiro: python main.py")
         return
 
     results = []
