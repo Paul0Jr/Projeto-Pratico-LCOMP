@@ -1,5 +1,6 @@
 from z3 import *
 import os
+import json
 from lean_prover import (
     generate_lean_proof,
     generate_counterexample,
@@ -8,9 +9,65 @@ from lean_prover import (
     compare_counterexamples,
     validate_counterexample
 )
+from premises_generator import load_premises_from_file, validate_premises_structure
 
 def create_proposition(name: str) -> BoolRef:
     return Bool(name)
+
+def formula_to_z3(formula: str, props: dict) -> BoolRef:
+    """Converte uma fórmula em string para expressão Z3"""
+    # Substitui os operadores lógicos por suas equivalentes em Z3
+    formula = formula.strip()
+
+    def parse_expr(expr):
+        expr = expr.strip()
+
+        # Remove parênteses externos
+        while expr.startswith('(') and expr.endswith(')'):
+            expr = expr[1:-1].strip()
+
+        # Negação
+        if expr.startswith('¬'):
+            return Not(parse_expr(expr[1:].strip()))
+
+        # Bicondicional (↔)
+        if '↔' in expr and not expr.startswith('('):
+            parts = expr.split('↔')
+            left = parse_expr(parts[0])
+            right = parse_expr(parts[1])
+            return And(Implies(left, right), Implies(right, left))
+
+        # Implicação (→)
+        if '→' in expr:
+            parts = expr.split('→')
+            left = parse_expr(parts[0])
+            right = parse_expr(parts[1])
+            return Implies(left, right)
+
+        # Disjunção (∨)
+        if '∨' in expr:
+            parts = [p.strip() for p in expr.split('∨')]
+            result = parse_expr(parts[0])
+            for part in parts[1:]:
+                result = Or(result, parse_expr(part))
+            return result
+
+        # Conjunção (∧)
+        if '∧' in expr:
+            parts = [p.strip() for p in expr.split('∧')]
+            result = parse_expr(parts[0])
+            for part in parts[1:]:
+                result = And(result, parse_expr(part))
+            return result
+
+        # Proposição simples
+        expr_clean = expr.strip()
+        if expr_clean in props:
+            return props[expr_clean]
+        else:
+            raise ValueError(f"Proposição desconhecida: {expr_clean}")
+
+    return parse_expr(formula)
 
 def format_formula(formula: str) -> str:
     """Convert text notation to propositional logic symbols"""
@@ -38,106 +95,58 @@ def verify_logical_consequence(premises: list[BoolRef], conclusion: BoolRef) -> 
     else:
         return None, "Resultado indeterminado"
 
-def example_modus_ponens() -> bool:
+def run_example(premise_data: dict, example_num: int) -> bool:
+    """Função genérica para executar um exemplo com dados de premissas"""
     print("=" * 60)
-    print("Exemplo 1: Modus Ponens")
+    print(f"Exemplo {example_num}: {premise_data['name']}")
     print("=" * 60)
 
-    p = create_proposition("p")
-    q = create_proposition("q")
+    proposition_names = premise_data['propositions']
+    premise_strs = premise_data['premises']
+    conclusion_str = premise_data['conclusion']
+    premise_type = premise_data['type']
 
-    premises = [p, Implies(p, q)]
-    conclusion = q
+    props = {name: create_proposition(name) for name in proposition_names}
+
+    try:
+        premises = [formula_to_z3(p, props) for p in premise_strs]
+        conclusion = formula_to_z3(conclusion_str, props)
+    except Exception as e:
+        print(f"Erro ao converter fórmulas: {e}")
+        return False
 
     print(f"Premissas:")
-    print(f"  1. p")
-    print(f"  2. p → q")
-    print(f"Conclusão: q")
-
-    is_consequence, result = verify_logical_consequence(premises, conclusion)
-    print(f"\n[Z3] {result}")
-
-    if is_consequence:
-        print("\nGerando prova em LEAN:")
-        try:
-            proof = generate_lean_proof(
-                propositions=["p", "q"],
-                premises=["p", "p → q"],
-                conclusion="q"
-            )
-            print("\nProva em LEAN:")
-            print(proof)
-        except Exception as e:
-            print(f"Erro ao gerar prova: {e}")
-
-    print()
-    return is_consequence
-
-def example_disjunctive_syllogism() -> bool:
-    print("=" * 60)
-    print("Exemplo 2: Silogismo Disjuntivo")
-    print("=" * 60)
-
-    p = create_proposition("p")
-    q = create_proposition("q")
-
-    premises = [Or(p, q), Not(p)]
-    conclusion = q
-
-    print(f"Premissas:")
-    print(f"  1. p ∨ q")
-    print(f"  2. ¬p")
-    print(f"Conclusão: q")
-
-    is_consequence, result = verify_logical_consequence(premises, conclusion)
-    print(f"\n[Z3] {result}")
-
-    if is_consequence:
-        print("\nGerando prova em LEAN:")
-        try:
-            proof = generate_lean_proof(
-                propositions=["p", "q"],
-                premises=["p ∨ q", "¬p"],
-                conclusion="q"
-            )
-            print("\nProva em LEAN:")
-            print(proof)
-        except Exception as e:
-            print(f"Erro ao gerar prova: {e}")
-
-    print()
-    return is_consequence
-
-def example_affirming_consequent() -> bool:
-    print("=" * 60)
-    print("Exemplo 3: Afirmação do Consequente (Falácia)")
-    print("=" * 60)
-
-    p = create_proposition("p")
-    q = create_proposition("q")
-
-    premises = [Implies(p, q), q]
-    conclusion = p
-
-    print(f"Premissas:")
-    print(f"  1. p → q")
-    print(f"  2. q")
-    print(f"Conclusão: p")
-    print("\nNota: Esta é uma FALÁCIA. Não é consequência lógica.\n")
+    for i, p in enumerate(premise_strs, 1):
+        print(f"  {i}. {p}")
+    print(f"Conclusão: {conclusion_str}")
+    print(f"Tipo Esperado: {premise_type}\n")
 
     is_consequence, result = verify_logical_consequence(premises, conclusion)
     print(f"[Z3] {result}")
 
-    if not is_consequence:
+    if is_consequence and premise_type == "VALID":
+        print("\nGerando prova em LEAN:")
+        try:
+            proof = generate_lean_proof(
+                propositions=proposition_names,
+                premises=premise_strs,
+                conclusion=conclusion_str
+            )
+            print("\nProva em LEAN:")
+            print(proof)
+        except Exception as e:
+            print(f"Erro ao gerar prova: {e}")
+
+    elif not is_consequence and premise_type == "INVALID":
         print("\n" + "=" * 60)
         print("COMPARAÇÃO: Contra-exemplos COM vs SEM Guidance")
         print("=" * 60)
 
         try:
             comparison = compare_counterexamples(
-                propositions=["p", "q"],
-                premises=["p → q", "q"],
-                conclusion="p"
+                propositions=proposition_names,
+                premises=premise_strs,
+                conclusion=conclusion_str
             )
 
             print("\n--- SEM GUIDANCE ---")
@@ -165,46 +174,18 @@ def example_affirming_consequent() -> bool:
     print()
     return is_consequence
 
-def example_complex_reasoning() -> bool:
-    print("=" * 60)
-    print("Exemplo 4: Raciocínio Complexo")
-    print("=" * 60)
 
-    p = create_proposition("p")
-    q = create_proposition("q")
-    r = create_proposition("r")
+def first_example(premise_data: dict) -> bool:
+    return run_example(premise_data, 1)
 
-    premises = [
-        Implies(p, q),
-        Implies(r, Not(p)),
-        p
-    ]
-    conclusion = q
+def second_example(premise_data: dict) -> bool:
+    return run_example(premise_data, 2)
 
-    print(f"Premissas:")
-    print(f"  1. p → q")
-    print(f"  2. r → ¬p")
-    print(f"  3. p")
-    print(f"\nConclusão: q")
+def third_example(premise_data: dict) -> bool:
+    return run_example(premise_data, 3)
 
-    is_consequence, result = verify_logical_consequence(premises, conclusion)
-    print(f"\n[Z3] {result}")
-
-    if is_consequence:
-        print("\nGerando prova em LEAN:")
-        try:
-            proof = generate_lean_proof(
-                propositions=["p", "q", "r"],
-                premises=["p → q", "r → ¬p", "p"],
-                conclusion="q"
-            )
-            print("\nProva em LEAN:")
-            print(proof)
-        except Exception as e:
-            print(f"Erro ao gerar prova: {e}")
-
-    print()
-    return is_consequence
+def fourth_example(premise_data: dict) -> bool:
+    return run_example(premise_data, 4)
 
 def main() -> None:
     print("\n" + "=" * 60)
@@ -213,21 +194,28 @@ def main() -> None:
 
     if not os.getenv("GEMINI_API_KEY"):
         print("\nAviso: GEMINI_API_KEY não está configurada")
-        print("Para usar a geração de provas em LEAN, defina:")
-        print("export GEMINI_API_KEY='sua-chave-aqui'")
-        print("\nContinuando apenas com Z3...\n")
+        print("\nContinuando apenas com Z3:\n")
+
+    premises = load_premises_from_file()
+
+    if not premises or not validate_premises_structure(premises):
+        print("\nErro: Não foi possível carregar as premissas geradas.")
+        print("Execute primeiro: python premises_generator.py")
+        return
 
     results = []
-    results.append(("Modus Ponens", example_modus_ponens()))
-    results.append(("Silogismo Disjuntivo", example_disjunctive_syllogism()))
-    results.append(("Afirmação do Consequente", example_affirming_consequent()))
-    results.append(("Raciocínio Complexo", example_complex_reasoning()))
+    premise_list = premises['premises']
+
+    results.append(("Exemplo um", first_example(premise_list[0])))
+    results.append(("Exemplo dois", second_example(premise_list[1])))
+    results.append(("Exemplo três", third_example(premise_list[2])))
+    results.append(("Exemplo quatro", fourth_example(premise_list[3])))
 
     print("=" * 60)
     print("RESUMO FINAL")
     print("=" * 60)
     for name, result in results:
-        status = "✓ Consequência lógica" if result else "✗ Não é consequência lógica"
+        status = "É consequência lógica" if result else "NÃO é consequência lógica"
         print(f"{name}: {status}")
     print()
 
