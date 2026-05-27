@@ -17,34 +17,30 @@ Usar o seguinte material sobre LEAN: https://leanprover.github.io/logic_and_proo
 # Estrutura do Projeto
 
 ```
+├── main.py
+├── premise_generator.py
 ├── solver.py
 ├── lean_prover.py
 ├── requirements.txt
 ├── Dockerfile
 ├── docker-compose.yml
+├── .env
 └── README.md
+
 ```
 
 ---
 
 ## Como usar
 
-### Configuração da API Gemini
-Defina sua chave da API como variável de ambiente:
-```bash
-export GEMINI_API_KEY='sua-chave-aqui'
-```
-
-Ou no Docker:
-```bash
-GEMINI_API_KEY='sua-chave-aqui' make docker-run
-```
+### * Configuração da API Gemini
+Defina sua chave da API no arquivo .env (seguindo o exemplo do .envexample.
 
 ---
 
 ## Recursos da Avaliação
 
-### Fórmulas em Lógica Proposicional
+### * Fórmulas em Lógica Proposicional
 - **Implicação**: `p → q`
 - **Conjunção**: `p ∧ q`
 - **Disjunção**: `p ∨ q`
@@ -53,47 +49,26 @@ GEMINI_API_KEY='sua-chave-aqui' make docker-run
 
 As premissas e conclusões são expressas diretamente nestes símbolos formais.
 
-### Verificação com Z3
+### * Verificação com Z3
 - Dado um conjunto de premissas e uma conclusão
 - Z3 verifica se é logicamente válido usando SAT solving
 - Determina se a conclusão é consequência lógica das premissas
 
-### Geração de Provas em LEAN (Gemini)
+### * Geração de Provas em LEAN (Gemini)
 - Se é consequência: pede prova formal em LEAN 3
 - Baseado em natural dedução natural baseado no artigo sobre LEAN.
 
-### Geração e Comparação de Contra-exemplos (Gemini)
+### * Geração e Comparação de Contra-exemplos (Gemini)
 - Se NÃO é consequência: gera atribuição de valores
 - **COM GUIDANCE**: Instruções explícitas sobre verificação
 - **SEM GUIDANCE**: Apenas premissas, conclusão e contra-exemplo
 - Compara acurácia entre os dois modos
 
-### Métricas de Comparação
+### * Métricas de Comparação
 Para cada contra-exemplo gerado pela LLM:
 - **Validação**: Verifica se tem estrutura apropriada (assignments e valores true/false)
 - **Comparação**: Analisa qual modo (com/sem guidance) acerta mais
 - **Resultado**: Indica se guidance melhorou a geração
-
----
-
-## 📊 Exemplos Inclusos
-
-1. **Modus Ponens** (válido)
-   - Premissas: p, p → q
-   - Conclusão: q
-
-2. **Silogismo Disjuntivo** (válido)
-   - Premissas: p ∨ q, ¬p
-   - Conclusão: q
-
-3. **Afirmação do Consequente** (inválido - falácia)
-   - Premissas: p → q, q
-   - Conclusão: p
-   - *Inclui comparação de contra-exemplos com/sem guidance*
-
-4. **Raciocínio Complexo** (válido)
-   - Premissas: p → q, r → ¬p, p
-   - Conclusão: q
 
 ---
 
