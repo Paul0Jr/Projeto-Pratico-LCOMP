@@ -10,4 +10,4 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-    command: python solver.py
+    command: python main.py
